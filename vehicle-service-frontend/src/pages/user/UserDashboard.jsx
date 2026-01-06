@@ -1,30 +1,39 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import UserNavbar from "../../components/UserNavbar";
 import { useNavigate } from "react-router-dom";
 
 const UserDashboard = () => {
   const nav = useNavigate();
 
-  const stats = [
-    {
-      label: "Total Services",
-      value: 12,
-      icon: "bi-tools",
-      color: "primary",
-    },
-    {
-      label: "Upcoming Services",
-      value: 2,
-      icon: "bi-calendar-event",
-      color: "warning",
-    },
-    {
-      label: "Completed",
-      value: 10,
-      icon: "bi-check-circle",
-      color: "success",
-    },
-  ];
+  const [stats, setStats] = useState({
+    total: 0,
+    completed: 0,
+    upcoming: 0,
+  });
+
+  useEffect(() => {
+    const loggedUser = JSON.parse(localStorage.getItem("loggedUser"));
+    if (!loggedUser) return;
+
+    const slots = JSON.parse(localStorage.getItem("slots")) || [];
+    const jobCards = JSON.parse(localStorage.getItem("jobCards")) || [];
+
+    const userBookings = slots.filter(
+      (s) => s.booked && s.bookedUserEmail === loggedUser.email
+    );
+
+    const completedBookings = userBookings.filter((slot) =>
+      jobCards.some(
+        (jc) => jc.slotId === slot.id && jc.status === "Completed"
+      )
+    );
+
+    setStats({
+      total: userBookings.length,
+      completed: completedBookings.length,
+      upcoming: userBookings.length - completedBookings.length,
+    });
+  }, []);
 
   const actions = [
     {
@@ -54,72 +63,82 @@ const UserDashboard = () => {
     <>
       <UserNavbar />
 
-      <div className="container-fluid bg-light min-vh-100 py-4">
+      <div className="container-fluid bg-light min-vh-100 py-5">
         <div className="container">
 
           {/* Header */}
-          <div className="mb-4">
-            <h2 className="fw-bold">Dashboard</h2>
-            <p className="text-muted mb-0">
-              Overview of your service activity
+          <div className="mb-5 text-center">
+            <h1 className="fw-bold mb-2">Welcome Back!</h1>
+            <p className="text-muted fs-5">
+              Here’s a quick overview of your service activity
             </p>
           </div>
 
           {/* Stats Section */}
           <div className="row g-4 mb-5">
-            {stats.map((item, i) => (
-              <div key={i} className="col-md-4">
-                <div className="card border-0 shadow-sm h-100">
-                  <div className="card-body d-flex align-items-center">
-                    <div
-                      className={`bg-${item.color} bg-opacity-10 text-${item.color} rounded-circle p-3 me-3`}
-                    >
-                      <i className={`bi ${item.icon} fs-4`}></i>
-                    </div>
-                    <div>
-                      <h4 className="fw-bold mb-0">{item.value}</h4>
-                      <small className="text-muted">{item.label}</small>
-                    </div>
-                  </div>
+            <div className="col-md-4">
+              <div className="card shadow-sm border-0 text-center p-4 bg-white rounded-4">
+                <div className="mb-3">
+                  <i className="bi bi-tools fs-1 text-primary"></i>
                 </div>
+                <h3 className="fw-bold">{stats.total}</h3>
+                <p className="text-muted mb-0">Total Services</p>
               </div>
-            ))}
+            </div>
+
+            <div className="col-md-4">
+              <div className="card shadow-sm border-0 text-center p-4 bg-white rounded-4">
+                <div className="mb-3">
+                  <i className="bi bi-calendar-event fs-1 text-warning"></i>
+                </div>
+                <h3 className="fw-bold">{stats.upcoming}</h3>
+                <p className="text-muted mb-0">Upcoming Services</p>
+              </div>
+            </div>
+
+            <div className="col-md-4">
+              <div className="card shadow-sm border-0 text-center p-4 bg-white rounded-4">
+                <div className="mb-3">
+                  <i className="bi bi-check-circle fs-1 text-success"></i>
+                </div>
+                <h3 className="fw-bold">{stats.completed}</h3>
+                <p className="text-muted mb-0">Completed Services</p>
+              </div>
+            </div>
           </div>
 
-          {/* Actions Section */}
-          <h5 className="fw-semibold mb-3">Quick Actions</h5>
+          {/* Quick Actions */}
+          <h4 className="fw-semibold mb-3">Quick Actions</h4>
           <div className="row g-4">
             {actions.map((item, index) => (
               <div key={index} className="col-md-4">
                 <div
-                  className="card h-100 border-0 shadow-sm dashboard-action"
+                  className={`card h-100 border-0 shadow-sm dashboard-action rounded-4 p-3`}
                   role="button"
                   onClick={() => nav(item.path)}
                 >
-                  <div className="card-body">
-                    <div
-                      className={`text-${item.color} mb-3`}
-                    >
-                      <i className={`bi ${item.icon} fs-2`}></i>
-                    </div>
-                    <h6 className="fw-semibold">{item.title}</h6>
-                    <p className="text-muted small mb-0">{item.desc}</p>
+                  <div className={`d-flex align-items-center mb-3 text-${item.color}`}>
+                    <i className={`bi ${item.icon} fs-1`}></i>
                   </div>
+                  <h5 className="fw-bold">{item.title}</h5>
+                  <p className="text-muted mb-0">{item.desc}</p>
                 </div>
               </div>
             ))}
           </div>
 
-          {/* Info Section */}
-          <div className="alert alert-info border-0 shadow-sm mt-5">
-            <i className="bi bi-info-circle-fill me-2"></i>
-            Tip: Keep your profile updated to receive service reminders.
+          {/* Tips / Info */}
+          <div className="alert alert-info border-0 shadow-sm mt-5 rounded-4 d-flex align-items-center">
+            <i className="bi bi-info-circle-fill me-2 fs-5"></i>
+            <div>
+              Keep your profile updated to receive timely reminders and notifications for upcoming services.
+            </div>
           </div>
 
         </div>
       </div>
 
-      {/* Dashboard Hover Effects */}
+      {/* Hover & card effects */}
       <style>
         {`
           .dashboard-action {

@@ -21,6 +21,7 @@ const SERVICE_PRICING = {
 
 const ManageSlots = () => {
   const navigate = useNavigate();
+
   const [slots, setSlots] = useState([]);
   const [mechanics, setMechanics] = useState([]);
 
@@ -32,6 +33,20 @@ const ManageSlots = () => {
     mechanicId: "",
     timeRange: ""
   });
+
+  // 🔔 Toast state
+  const [toast, setToast] = useState({
+    show: false,
+    message: "",
+    type: "success"
+  });
+
+  const showToast = (type, message) => {
+    setToast({ show: true, type, message });
+    setTimeout(() => {
+      setToast({ show: false, message: "", type: "success" });
+    }, 3000);
+  };
 
   useEffect(() => {
     setSlots(JSON.parse(localStorage.getItem("slots")) || []);
@@ -56,23 +71,38 @@ const ManageSlots = () => {
   };
 
   const cities = [...new Set(mechanics.map(m => m.city))];
+
   const vehicleTypes = form.city
     ? [...new Set(mechanics.filter(m => m.city === form.city).map(m => m.vehicleType))]
     : [];
+
   const services = form.city && form.vehicleType
-    ? [...new Set(mechanics
-        .filter(m => m.city === form.city && (m.vehicleType === form.vehicleType || m.vehicleType === "Both"))
-        .map(m => m.serviceName))]
+    ? [...new Set(
+        mechanics
+          .filter(m => m.city === form.city && (m.vehicleType === form.vehicleType || m.vehicleType === "Both"))
+          .map(m => m.serviceName)
+      )]
     : [];
-  const filteredMechanics = form.city && form.vehicleType && form.serviceName
-    ? mechanics.filter(m => m.city === form.city && (m.vehicleType === form.vehicleType || m.vehicleType === "Both") && m.serviceName === form.serviceName)
-    : [];
-  const bookedTimes = slots.filter(s => s.date === form.date && String(s.mechanicId) === String(form.mechanicId)).map(s => s.timeRange);
+
+  const filteredMechanics =
+    form.city && form.vehicleType && form.serviceName
+      ? mechanics.filter(
+          m =>
+            m.city === form.city &&
+            (m.vehicleType === form.vehicleType || m.vehicleType === "Both") &&
+            m.serviceName === form.serviceName
+        )
+      : [];
+
+  const bookedTimes = slots
+    .filter(s => s.date === form.date && String(s.mechanicId) === String(form.mechanicId))
+    .map(s => s.timeRange);
+
   const availableTimes = TIME_SLOTS.filter(t => !bookedTimes.includes(t));
 
   const addSlot = () => {
     if (Object.values(form).some(v => !v)) {
-      alert("Please fill all fields");
+      showToast("danger", "Please fill all fields");
       return;
     }
 
@@ -93,7 +123,7 @@ const ManageSlots = () => {
     };
 
     saveSlots([...slots, newSlot]);
-    alert("Slot added successfully");
+    showToast("success", "Slot added successfully");
 
     setForm({
       date: "",
@@ -107,6 +137,7 @@ const ManageSlots = () => {
 
   const cancelBooking = (id) => {
     if (!window.confirm("Cancel this booking?")) return;
+
     saveSlots(
       slots.map(s =>
         s.id === id
@@ -114,16 +145,36 @@ const ManageSlots = () => {
           : s
       )
     );
+
+    showToast("warning", "Booking cancelled");
   };
 
   const deleteSlot = (id) => {
     if (!window.confirm("Delete this slot?")) return;
+
     saveSlots(slots.filter(s => s.id !== id));
+    showToast("danger", "Slot deleted");
   };
 
   return (
     <>
       <AdminNavbar />
+
+      {/* 🔔 Toast */}
+      <div className="toast-container position-fixed top-0 end-0 p-3" style={{ zIndex: 1055 }}>
+        {toast.show && (
+          <div className={`toast show text-bg-${toast.type} border-0`}>
+            <div className="d-flex">
+              <div className="toast-body">{toast.message}</div>
+              <button
+                className="btn-close btn-close-white me-2 m-auto"
+                onClick={() => setToast({ show: false })}
+              ></button>
+            </div>
+          </div>
+        )}
+      </div>
+
       <div className="container py-4">
         <h3 className="mb-4">Manage Slots</h3>
 
@@ -191,13 +242,17 @@ const ManageSlots = () => {
                 <td>{s.city}</td>
                 <td>{s.serviceName}</td>
                 <td>{mechanics.find(m => m.id === s.mechanicId)?.mechanicName}</td>
-                <td className={s.booked ? "text-danger" : "text-success"}>{s.booked ? "Booked" : "Available"}</td>
+                <td className={s.booked ? "text-danger" : "text-success"}>
+                  {s.booked ? "Booked" : "Available"}
+                </td>
                 <td>
-                  {s.booked && <>
-                    <button className="btn btn-info btn-sm me-2" onClick={() => navigate(`/admin/view-booking/${s.id}`)}>View User</button>
-                    <button className="btn btn-primary btn-sm me-2" onClick={() => navigate(`/admin/create-job-card/${s.id}`)}>Create Job Card</button>
-                    <button className="btn btn-warning btn-sm me-2" onClick={() => cancelBooking(s.id)}>Cancel</button>
-                  </>}
+                  {s.booked && (
+                    <>
+                      <button className="btn btn-info btn-sm me-2" onClick={() => navigate(`/admin/view-booking/${s.id}`)}>View User</button>
+                      <button className="btn btn-primary btn-sm me-2" onClick={() => navigate(`/admin/create-job-card/${s.id}`)}>Create Job Card</button>
+                      <button className="btn btn-warning btn-sm me-2" onClick={() => cancelBooking(s.id)}>Cancel</button>
+                    </>
+                  )}
                   <button className="btn btn-danger btn-sm" onClick={() => deleteSlot(s.id)}>Delete</button>
                 </td>
               </tr>

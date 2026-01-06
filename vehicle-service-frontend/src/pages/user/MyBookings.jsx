@@ -6,7 +6,7 @@ import "react-toastify/dist/ReactToastify.css";
 const MyBookings = () => {
   const [bookings, setBookings] = useState([]);
   const [selectedDate, setSelectedDate] = useState("");
-  const [statusFilter, setStatusFilter] = useState("All"); // New filter
+  const [statusFilter, setStatusFilter] = useState("All");
 
   const loggedUser = JSON.parse(localStorage.getItem("loggedUser"));
 
@@ -15,33 +15,39 @@ const MyBookings = () => {
 
     const slots = JSON.parse(localStorage.getItem("slots")) || [];
     const mechanics = JSON.parse(localStorage.getItem("mechanics")) || [];
-    const today = new Date();
+    const jobCards = JSON.parse(localStorage.getItem("jobCards")) || [];
 
-    const userBookings = slots
-      .filter(
-        (s) =>
-          s.booked &&
-          s.bookedUserEmail === loggedUser.email &&
-          (selectedDate === "" || s.date === selectedDate)
-      )
-      .map((s) => {
-        const provider = mechanics.find((m) => m.id === s.mechanicId);
-        const bookingDate = new Date(s.date + " " + s.timeRange.split("-")[0]);
-        const status = bookingDate < today ? "Completed" : "Upcoming";
+    // Step 1: Get user bookings
+    let userBookings = slots.filter(
+      (s) =>
+        s.booked &&
+        s.bookedUserEmail === loggedUser.email &&
+        (selectedDate === "" || s.date === selectedDate)
+    );
 
-        return {
-          ...s,
-          providerName: provider?.mechanicName || "-",
-          place: s.place || provider?.city || "-",
-          status,
-        };
-      });
+    // Step 2: Attach provider + job card status
+    userBookings = userBookings.map((s) => {
+      const provider = mechanics.find((m) => m.id === s.mechanicId);
 
-    // Apply status filter
+      const relatedJobCard = jobCards.find(
+        (j) => j.slotId === s.id && j.status === "Completed"
+      );
+
+      return {
+        ...s,
+        providerName: provider?.mechanicName || "-",
+        place: s.place || provider?.city || "-",
+        status: relatedJobCard ? "Completed" : "Not Completed",
+      };
+    });
+
+    // Step 3: Apply status filter
     const filteredBookings =
       statusFilter === "All"
         ? userBookings
-        : userBookings.filter((b) => b.status === statusFilter);
+        : statusFilter === "Completed"
+        ? userBookings.filter((b) => b.status === "Completed")
+        : userBookings.filter((b) => b.status !== "Completed");
 
     setBookings(filteredBookings);
   };
@@ -50,11 +56,10 @@ const MyBookings = () => {
     loadBookings();
   }, [selectedDate, statusFilter]);
 
-  const cancelBooking = (id, date) => {
-    const today = new Date();
-    const bookingDate = new Date(date);
-    if (bookingDate < today) {
-      toast.warning("Past bookings cannot be cancelled");
+  // ✅ Cancel booking (only if NOT completed)
+  const cancelBooking = (id, status) => {
+    if (status === "Completed") {
+      toast.warning("Completed services cannot be cancelled");
       return;
     }
 
@@ -72,98 +77,11 @@ const MyBookings = () => {
           }
         : slot
     );
-    localStorage.setItem("slots", JSON.stringify(updatedSlots));
 
+    localStorage.setItem("slots", JSON.stringify(updatedSlots));
     toast.success("Booking cancelled successfully");
     loadBookings();
   };
-
-  const renderTable = (bookingList) => (
-    <div className="table-responsive">
-      <table className="table table-hover align-middle mb-0">
-        <thead className="table-light">
-          <tr>
-            <th>Date</th>
-            <th>Time</th>
-            <th>Vehicle</th>
-            <th>Place</th>
-            <th>Service</th>
-            <th>Provider</th>
-            <th>Status</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          {bookingList.length === 0 ? (
-            <tr>
-              <td colSpan="8" className="text-center text-muted py-4">
-                No bookings found
-              </td>
-            </tr>
-          ) : (
-            bookingList.map((b) => (
-              <tr key={b.id}>
-                <td>{b.date}</td>
-                <td>{b.timeRange}</td>
-                <td>{b.vehicleType}</td>
-                <td>{b.place}</td>
-                <td>{b.serviceName}</td>
-                <td>{b.providerName}</td>
-                <td>
-                  <span
-                    className={`badge ${
-                      b.status === "Completed" ? "bg-success" : "bg-warning"
-                    }`}
-                  >
-                    {b.status}
-                  </span>
-                </td>
-                <td>
-                  <button
-                    className="btn btn-outline-danger btn-sm"
-                    onClick={() => cancelBooking(b.id, b.date)}
-                    disabled={b.status === "Completed"}
-                  >
-                    Cancel
-                  </button>
-                </td>
-              </tr>
-            ))
-          )}
-        </tbody>
-      </table>
-    </div>
-  );
-
-  const renderCards = (bookingList) =>
-    bookingList.map((b) => (
-      <div key={b.id} className="card mb-3 shadow-sm border-0">
-        <div className="card-body">
-          <h6 className="fw-bold mb-2">
-            {b.date} | {b.timeRange}
-          </h6>
-          <p className="mb-1"><b>Vehicle:</b> {b.vehicleType}</p>
-          <p className="mb-1"><b>Service:</b> {b.serviceName}</p>
-          <p className="mb-1"><b>Provider:</b> {b.providerName}</p>
-          <span
-            className={`badge ${
-              b.status === "Completed" ? "bg-success" : "bg-warning"
-            } mb-2`}
-          >
-            {b.status}
-          </span>
-          <div>
-            <button
-              className="btn btn-outline-danger btn-sm"
-              onClick={() => cancelBooking(b.id, b.date)}
-              disabled={b.status === "Completed"}
-            >
-              Cancel Booking
-            </button>
-          </div>
-        </div>
-      </div>
-    ));
 
   return (
     <>
@@ -171,9 +89,7 @@ const MyBookings = () => {
       <ToastContainer position="top-right" />
 
       <div className="container py-4">
-        <div className="d-flex justify-content-between align-items-center mb-4">
-          <h3 className="fw-bold mb-0">My Bookings</h3>
-        </div>
+        <h3 className="fw-bold mb-4">My Bookings</h3>
 
         {/* Filters */}
         <div className="row mb-4">
@@ -186,6 +102,7 @@ const MyBookings = () => {
               onChange={(e) => setSelectedDate(e.target.value)}
             />
           </div>
+
           <div className="col-md-4 mb-2">
             <label className="form-label">Filter by Status</label>
             <select
@@ -194,19 +111,70 @@ const MyBookings = () => {
               onChange={(e) => setStatusFilter(e.target.value)}
             >
               <option value="All">All</option>
-              <option value="Upcoming">Upcoming</option>
               <option value="Completed">Completed</option>
+              <option value="NotCompleted">Not Completed</option>
             </select>
           </div>
         </div>
 
-        {/* Desktop Table */}
-        <div className="d-none d-md-block card shadow-sm border-0 mb-4">
-          {renderTable(bookings)}
-        </div>
+        {/* Table View */}
+        <div className="table-responsive">
+          <table className="table table-hover align-middle">
+            <thead className="table-dark">
+              <tr>
+                <th>Date</th>
+                <th>Time</th>
+                <th>Vehicle</th>
+                <th>Place</th>
+                <th>Service</th>
+                <th>Provider</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
 
-        {/* Mobile Cards */}
-        <div className="d-md-none">{renderCards(bookings)}</div>
+            <tbody>
+              {bookings.length === 0 ? (
+                <tr>
+                  <td colSpan="8" className="text-center text-muted">
+                    No bookings found
+                  </td>
+                </tr>
+              ) : (
+                bookings.map((b) => (
+                  <tr key={b.id}>
+                    <td>{b.date}</td>
+                    <td>{b.timeRange}</td>
+                    <td>{b.vehicleType}</td>
+                    <td>{b.place}</td>
+                    <td>{b.serviceName}</td>
+                    <td>{b.providerName}</td>
+                    <td>
+                      <span
+                        className={`badge ${
+                          b.status === "Completed"
+                            ? "bg-success"
+                            : "bg-warning"
+                        }`}
+                      >
+                        {b.status}
+                      </span>
+                    </td>
+                    <td>
+                      <button
+                        className="btn btn-outline-danger btn-sm"
+                        disabled={b.status === "Completed"}
+                        onClick={() => cancelBooking(b.id, b.status)}
+                      >
+                        Cancel
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </>
   );
