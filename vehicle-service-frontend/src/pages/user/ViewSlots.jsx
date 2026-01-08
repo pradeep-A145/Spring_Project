@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import UserNavbar from "../../components/UserNavbar";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { useNavigate } from "react-router-dom";
 
 const SERVICE_PRICING = {
   "general service": 500,
@@ -14,6 +15,8 @@ const SERVICE_PRICING = {
 };
 
 const ViewSlots = () => {
+  const nav = useNavigate();
+
   const [slots, setSlots] = useState([]);
   const [search, setSearch] = useState("");
   const [serviceFilter, setServiceFilter] = useState("");
@@ -56,7 +59,6 @@ const ViewSlots = () => {
     setSlots(updatedSlots);
     localStorage.setItem("slots", JSON.stringify(updatedSlots));
 
-    // Save booking history
     const bookings = JSON.parse(localStorage.getItem("bookings")) || [];
     bookings.push({
       ...slot,
@@ -82,7 +84,28 @@ const ViewSlots = () => {
       <ToastContainer position="top-right" />
 
       <div className="container py-4">
-        <h4 className="fw-bold mb-3">Available Service Slots</h4>
+        {/* Header Buttons */}
+        <div className="d-flex justify-content-between align-items-center mb-3">
+          <h4 className="fw-bold mb-0">Available Service Slots</h4>
+
+          <div className="d-flex gap-2">
+            <button
+              className="btn btn-outline-secondary btn-sm"
+              onClick={() => nav("/user/dashboard")}
+            >
+              <i className="bi bi-arrow-left me-1"></i>
+              Back
+            </button>
+
+            <button
+              className="btn btn-outline-primary btn-sm"
+              onClick={() => nav("/user/mybookings")}
+            >
+              <i className="bi bi-journal-text me-1"></i>
+              My Bookings
+            </button>
+          </div>
+        </div>
 
         {/* Filters */}
         <div className="row mb-3 g-2">

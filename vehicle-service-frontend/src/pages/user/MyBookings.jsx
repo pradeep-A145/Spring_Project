@@ -2,8 +2,11 @@ import React, { useEffect, useState } from "react";
 import UserNavbar from "../../components/UserNavbar";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { useNavigate } from "react-router-dom";
 
 const MyBookings = () => {
+  const nav = useNavigate();
+
   const [bookings, setBookings] = useState([]);
   const [selectedDate, setSelectedDate] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
@@ -17,7 +20,6 @@ const MyBookings = () => {
     const mechanics = JSON.parse(localStorage.getItem("mechanics")) || [];
     const jobCards = JSON.parse(localStorage.getItem("jobCards")) || [];
 
-    // Step 1: Get user bookings
     let userBookings = slots.filter(
       (s) =>
         s.booked &&
@@ -25,10 +27,8 @@ const MyBookings = () => {
         (selectedDate === "" || s.date === selectedDate)
     );
 
-    // Step 2: Attach provider + job card status
     userBookings = userBookings.map((s) => {
       const provider = mechanics.find((m) => m.id === s.mechanicId);
-
       const relatedJobCard = jobCards.find(
         (j) => j.slotId === s.id && j.status === "Completed"
       );
@@ -41,7 +41,6 @@ const MyBookings = () => {
       };
     });
 
-    // Step 3: Apply status filter
     const filteredBookings =
       statusFilter === "All"
         ? userBookings
@@ -56,7 +55,6 @@ const MyBookings = () => {
     loadBookings();
   }, [selectedDate, statusFilter]);
 
-  // ✅ Cancel booking (only if NOT completed)
   const cancelBooking = (id, status) => {
     if (status === "Completed") {
       toast.warning("Completed services cannot be cancelled");
@@ -89,7 +87,28 @@ const MyBookings = () => {
       <ToastContainer position="top-right" />
 
       <div className="container py-4">
-        <h3 className="fw-bold mb-4">My Bookings</h3>
+        {/* Header */}
+        <div className="d-flex justify-content-between align-items-center mb-4">
+          <h3 className="fw-bold mb-0">My Bookings</h3>
+
+          <div className="d-flex gap-2">
+            <button
+              className="btn btn-outline-secondary btn-sm"
+              onClick={() => nav("/user/view")}
+            >
+              <i className="bi bi-arrow-left me-1"></i>
+              Back
+            </button>
+
+            <button
+              className="btn btn-outline-primary btn-sm"
+              onClick={() => nav("/user/dashboard")}
+            >
+              <i className="bi bi-receipt me-1"></i>
+              Dashboard
+            </button>
+          </div>
+        </div>
 
         {/* Filters */}
         <div className="row mb-4">
@@ -117,7 +136,7 @@ const MyBookings = () => {
           </div>
         </div>
 
-        {/* Table View */}
+        {/* Table */}
         <div className="table-responsive">
           <table className="table table-hover align-middle">
             <thead className="table-dark">
